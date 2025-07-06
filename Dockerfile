@@ -1,6 +1,9 @@
 # Use the official Node.js runtime as the base image
 FROM node:18-alpine
 
+# Install nginx and supervisor
+RUN apk add --no-cache nginx supervisor
+
 # Set the working directory inside the container
 WORKDIR /usr/src/app
 
@@ -11,13 +14,34 @@ RUN --mount=type=bind,source=package.json,target=package.json \
     --mount=type=cache,target=/root/.npm \
     npm ci --omit=dev
 
-USER node
-
 # Copy the rest of the application code
 COPY . .
 
-# Expose the port that your Express app runs on
-EXPOSE 3000
+# Create nginx configuration
+RUN mkdir -p /etc/nginx/conf.d
+COPY nginx.conf /etc/nginx/nginx.conf
 
-# Define the command to run your application
-CMD ["npm", "start"]
+# Create directories for nginx with proper permissions
+RUN mkdir -p /var/log/nginx /run/nginx /var/cache/nginx /var/lib/nginx/logs && \
+    chown -R node:node /usr/src/app /var/log/nginx /run/nginx /etc/nginx /var/cache/nginx /var/lib/nginx
+
+# Create supervisor configuration
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Create directories for nginx and supervisor
+RUN mkdir -p /var/log/nginx /var/log/supervisor /run/nginx
+
+# Change ownership of necessary directories
+RUN chown -R node:node /usr/src/app /var/log/nginx /var/log/supervisor /run/nginx /etc/nginx
+
+# Create a startup script
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
+USER node
+
+# Expose the port that nginx will serve on
+EXPOSE 8080
+
+# Use the startup script
+CMD ["/start.sh"]
