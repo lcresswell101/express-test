@@ -1,5 +1,5 @@
 # Use the official Node.js runtime as the base image
-FROM node:18-alpine
+FROM public.ecr.aws/docker/library/node:18-alpine
 
 # Install nginx and supervisor
 RUN apk add --no-cache nginx supervisor
